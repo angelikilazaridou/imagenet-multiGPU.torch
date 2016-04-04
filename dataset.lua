@@ -5,6 +5,7 @@ local class = require('pl.class')
 local dir = require 'pl.dir'
 local tablex = require 'pl.tablex'
 local argcheck = require 'argcheck'
+require 'word2vec'
 require 'sys'
 require 'xlua'
 require 'image'
@@ -125,6 +126,7 @@ function dataset:__init(...)
 
 
    -- read in word vectors
+   self.w2v = Word2vec(opt.wvectors)
    
    -- define command-line tools, try your best to maintain OSX compatibility
    local wc = 'wc'
@@ -371,7 +373,7 @@ function dataset:semanticsample(quantity)
       local class = torch.random(1, #self.classes)
       local out = self:getByClass(class)
       table.insert(dataTable, out)
-      local outEmb = self:getVector(class)
+      local outEmb = self.w2v:getVector(class)
       table.insert(embedTable, outEmb)
       local label = 1
       table.insert(scalarTable, label)
