@@ -98,7 +98,12 @@ function train()
       donkeys:addjob(
          -- the job callback (runs in data-worker thread)
          function()
-            local inputs, labels = trainLoader:sample(opt.batchSize)
+	    local inputs, labels
+	    if opt.crit == 'class' then
+            	inputs, labels = trainLoader:sample(quantity)
+	    else
+		inputs, labels = trainLoader:semanticsample(quantity)
+	    end
             return inputs, labels
          end,
          -- the end callback (runs in the main thread)
@@ -153,12 +158,37 @@ function trainBatch(inputsCPU, labelsCPU)
    labels:resize(labelsCPU:size()):copy(labelsCPU)
 
    local err, outputs
-   feval = function(x)
+   feval = function(x, opt)
       model:zeroGradParameters()
-      outputs = model:forward(inputs)
+      -- format input data to be {images}
+      local input
+      if opt.crit == 'class' then
+	input = inputs
+      else
+	input = inputs[1]
+      end
+      local output = model:forward(inputs)
+
+      --format input to criterion to be either {prediction} or {predictions, w_vectors}
+      if opt.crit == 'class' then
+        outputs = output
+      else
+        outputs = {output, inputs[2]}
+      end
+
       err = criterion:forward(outputs, labels)
-      local gradOutputs = criterion:backward(outputs, labels)
+
+      local grads = criterion:backward(outputs, labels)
+
+      local gradOutputs 
+      if opt.crit == 'class' then 
+	gradOutputs = grads   
+      else
+	gradOutputs = grads[0] -- cause we throw away the grads for the word embeddings
+      end
+
       model:backward(inputs, gradOutputs)
+
       return err, gradParameters
    end
    optim.sgd(feval, parameters, optimState)
@@ -173,6 +203,7 @@ function trainBatch(inputsCPU, labelsCPU)
    batchNumber = batchNumber + 1
    loss_epoch = loss_epoch + err
    -- top-1 error
+   ---- TODO evaluation
    local top1 = 0
    do
       local _,prediction_sorted = outputs:float():sort(2, true) -- descending

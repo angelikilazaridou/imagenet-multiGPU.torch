@@ -34,8 +34,8 @@ else
    end
 end
 
--- 2. Create Criterion
-criterion = nn.ClassNLLCriterion()
+-- 2. Create Criterion based on word embeddings
+criterion = nn.CosineEmbeddingCriterion(opt.margin)
 
 print('=> Model')
 print(model)

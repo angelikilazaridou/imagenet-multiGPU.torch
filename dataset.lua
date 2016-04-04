@@ -123,6 +123,9 @@ function dataset:__init(...)
       self.classIndices[v] = k
    end
 
+
+   -- read in word vectors
+   
    -- define command-line tools, try your best to maintain OSX compatibility
    local wc = 'wc'
    local cut = 'cut'
@@ -322,6 +325,26 @@ local function tableToOutput(self, dataTable, scalarTable)
    return data, scalarLabels
 end
 
+-- converts a table of samples (and corresponding labels) to a clean tensor
+local function tableToSemanticOutput(self, dataTable, embedTable, scalarTable)
+   local data, vectors, scalarLabels
+   local quantity = #scalarTable
+   assert(dataTable[1]:dim() == 3)
+   local v_dim = embedTable[1]:size(2)
+   data = torch.Tensor(quantity,
+                       self.sampleSize[1], self.sampleSize[2], self.sampleSize[3])
+   vectors = torch.Tensor(quantity, v_dim)
+   scalarLabels = torch.LongTensor(quantity):fill(-1111)
+   for i=1,#dataTable do
+      data[i]:copy(dataTable[i])
+      scalarLabels[i] = scalarTable[i]
+      vectors[i]:copy(embedTable[i])
+   end
+   return data, vectors, scalarLabels
+end
+
+
+
 -- sampler, samples from the training set.
 function dataset:sample(quantity)
    assert(quantity)
@@ -336,6 +359,28 @@ function dataset:sample(quantity)
    local data, scalarLabels = tableToOutput(self, dataTable, scalarTable)
    return data, scalarLabels
 end
+
+
+-- Semantic sampler, samples from the training set and adds also word vectors.
+function dataset:semanticsample(quantity)
+   assert(quantity)
+   local dataTable = {}
+   local embedTable = {}
+   local scalarTable = {}
+   for i=1,quantity do
+      local class = torch.random(1, #self.classes)
+      local out = self:getByClass(class)
+      table.insert(dataTable, out)
+      local outEmb = self:getVector(class)
+      table.insert(embedTable, outEmb)
+      local label = 1
+      table.insert(scalarTable, label)
+   end
+   local data, vectors, scalarLabels = tableToSemanticOutput(self, dataTable, embedTable, scalarTable)
+   return {data, vectors}, scalarLabels
+end
+
+
 
 function dataset:get(i1, i2)
    local indices = torch.range(i1, i2);
