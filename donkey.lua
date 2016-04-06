@@ -76,18 +76,20 @@ if paths.filep(trainCache) then
    print('Loading train metadata from cache')
    trainLoader = torch.load(trainCache)
    trainLoader.sampleHookTrain = trainHook
-   assert(trainLoader.paths[1] == paths.concat(opt.data, 'train'),
+   assert(trainLoader.paths[1] == paths.concat(opt.data, 'val'),
           'cached files dont have the same path as opt.data. Remove your cached files at: '
              .. trainCache .. ' and rerun the program')
 else
    print('Creating train metadata')
    trainLoader = dataLoader{
-      paths = {paths.concat(opt.data, 'train')},
+      paths = {paths.concat(opt.data, 'val')}, --train
       loadSize = loadSize,
       sampleSize = sampleSize,
       split = 100,
-      verbose = true
+      verbose = true,
+      wvectors = opt.wvectors
    }
+   print(opt.wvectors)
    torch.save(trainCache, trainLoader)
    trainLoader.sampleHookTrain = trainHook
 end
@@ -143,14 +145,15 @@ else
       sampleSize = sampleSize,
       split = 0,
       verbose = true,
-      forceClasses = trainLoader.classes -- force consistent class indices between trainLoader and testLoader
+      forceClasses = trainLoader.classes, -- force consistent class indices between trainLoader and testLoader
+      wvectors = opt.wvectors
    }
    torch.save(testCache, testLoader)
    testLoader.sampleHookTest = testHook
 end
 collectgarbage()
 -- End of test loader section
-
+print('Blabla')
 -- Estimate the per-channel mean/std (so that the loaders can normalize appropriately)
 if paths.filep(meanstdCache) then
    local meanstd = torch.load(meanstdCache)

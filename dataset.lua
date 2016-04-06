@@ -57,6 +57,9 @@ local initcheck = argcheck{
     help="a size to load the images to, initially",
     opt = true},
 
+   {name = "wvectors",
+     type = "string"},
+
    {name="forceClasses",
     type="table",
     help="If you want this loader to map certain classes to certain indices, "
@@ -83,7 +86,7 @@ function dataset:__init(...)
    -- argcheck
    local args =  initcheck(...)
    print(args)
-   for k,v in pairs(args) do self[k] = v end
+   for k,v in pairs(args) do self[k] = v  print(k) end
 
    if not self.loadSize then self.loadSize = self.sampleSize; end
 
@@ -126,7 +129,7 @@ function dataset:__init(...)
 
 
    -- read in word vectors
-   self.w2v = Word2vec(opt.wvectors)
+   self.w2v = Word2vec(self.wvectors)
    
    -- define command-line tools, try your best to maintain OSX compatibility
    local wc = 'wc'
@@ -365,6 +368,7 @@ end
 
 -- Semantic sampler, samples from the training set and adds also word vectors.
 function dataset:semanticsample(quantity)
+   print(quantity)
    assert(quantity)
    local dataTable = {}
    local embedTable = {}
