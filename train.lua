@@ -98,13 +98,13 @@ function train()
       donkeys:addjob(
          -- the job callback (runs in data-worker thread)
          function()
-	    local inputs, labels
+	    local inputs, labels, vectors
 	    if opt.crit == 'class' then
-            	inputs, labels = trainLoader:sample(quantity)
+            	inputs, labels = trainLoader:sample(opt.batchSize)
 	    else
-		inputs, labels = trainLoader:semanticsample(quantity)
-	    end
-            return inputs, labels
+		inputs, vectors, labels = trainLoader:semanticsample(opt.batchSize)
+	    end 
+	    return inputs, vectors, labels
          end,
          -- the end callback (runs in the main thread)
          trainBatch
@@ -139,6 +139,7 @@ end -- of train()
 -------------------------------------------------------------------------------------------
 -- GPU inputs (preallocate)
 local inputs = torch.CudaTensor()
+local vectors = torch.CudaTensor()
 local labels = torch.CudaTensor()
 
 local timer = torch.Timer()
@@ -147,33 +148,31 @@ local dataTimer = torch.Timer()
 local parameters, gradParameters = model:getParameters()
 
 -- 4. trainBatch - Used by train() to train a single batch after the data is loaded.
-function trainBatch(inputsCPU, labelsCPU)
+function trainBatch(inputsCPU, vectorsCPU, labelsCPU)
    cutorch.synchronize()
    collectgarbage()
    local dataLoadingTime = dataTimer:time().real
    timer:reset()
 
+  
    -- transfer over to GPU
    inputs:resize(inputsCPU:size()):copy(inputsCPU)
+   if opt.crit == 'sem' then
+	vectors:resize(vectorsCPU:size()):copy(vectorsCPU)
+   end
    labels:resize(labelsCPU:size()):copy(labelsCPU)
 
    local err, outputs
-   feval = function(x, opt)
+   feval = function(x)
       model:zeroGradParameters()
       -- format input data to be {images}
-      local input
-      if opt.crit == 'class' then
-	input = inputs
-      else
-	input = inputs[1]
-      end
       local output = model:forward(inputs)
 
       --format input to criterion to be either {prediction} or {predictions, w_vectors}
       if opt.crit == 'class' then
         outputs = output
       else
-        outputs = {output, inputs[2]}
+        outputs = {output, vectors}
       end
 
       err = criterion:forward(outputs, labels)
@@ -184,7 +183,7 @@ function trainBatch(inputsCPU, labelsCPU)
       if opt.crit == 'class' then 
 	gradOutputs = grads   
       else
-	gradOutputs = grads[0] -- cause we throw away the grads for the word embeddings
+	gradOutputs = grads[1] -- cause we throw away the grads for the word embeddings
       end
 
       model:backward(inputs, gradOutputs)
@@ -204,7 +203,7 @@ function trainBatch(inputsCPU, labelsCPU)
    loss_epoch = loss_epoch + err
    -- top-1 error
    ---- TODO evaluation
-   local top1 = 0
+   --[[local top1 = 0
    do
       local _,prediction_sorted = outputs:float():sort(2, true) -- descending
       for i=1,opt.batchSize do
@@ -214,10 +213,10 @@ function trainBatch(inputsCPU, labelsCPU)
 	 end
       end
       top1 = top1 * 100 / opt.batchSize;
-   end
+   end--]]
    -- Calculate top-1 error, and print information
-   print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f Top1-%%: %.2f LR %.0e DataLoadingTime %.3f'):format(
-          epoch, batchNumber, opt.epochSize, timer:time().real, err, top1,
+   print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f LR %.0e DataLoadingTime %.3f'):format(
+          epoch, batchNumber, opt.epochSize, timer:time().real, err, 
           optimState.learningRate, dataLoadingTime))
 
    dataTimer:reset()

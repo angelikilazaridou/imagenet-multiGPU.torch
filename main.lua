@@ -20,7 +20,13 @@ local opts = paths.dofile('opts.lua')
 opt = opts.parse(arg)
 
 nClasses = opt.nClasses
-
+--THIS IS UGLY!!!
+if opt.crit == 'sem' then
+	topLayer = opt.wvectors_dim
+else
+	topLayer = nClasses
+end
+print(topLayer)
 paths.dofile('util.lua')
 paths.dofile('model.lua')
 opt.imageSize = model.imageSize or opt.imageSize

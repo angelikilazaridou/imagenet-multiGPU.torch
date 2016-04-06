@@ -129,7 +129,7 @@ function dataset:__init(...)
 
 
    -- read in word vectors
-   self.w2v = Word2vec(self.wvectors)
+   self.w2v = Word2vec(self.wvectors, self.classes)
    
    -- define command-line tools, try your best to maintain OSX compatibility
    local wc = 'wc'
@@ -335,7 +335,7 @@ local function tableToSemanticOutput(self, dataTable, embedTable, scalarTable)
    local data, vectors, scalarLabels
    local quantity = #scalarTable
    assert(dataTable[1]:dim() == 3)
-   local v_dim = embedTable[1]:size(2)
+   local v_dim = embedTable[1]:size(1)
    data = torch.Tensor(quantity,
                        self.sampleSize[1], self.sampleSize[2], self.sampleSize[3])
    vectors = torch.Tensor(quantity, v_dim)
@@ -368,7 +368,6 @@ end
 
 -- Semantic sampler, samples from the training set and adds also word vectors.
 function dataset:semanticsample(quantity)
-   print(quantity)
    assert(quantity)
    local dataTable = {}
    local embedTable = {}
@@ -383,7 +382,7 @@ function dataset:semanticsample(quantity)
       table.insert(scalarTable, label)
    end
    local data, vectors, scalarLabels = tableToSemanticOutput(self, dataTable, embedTable, scalarTable)
-   return {data, vectors}, scalarLabels
+   return data, vectors, scalarLabels
 end
 
 
