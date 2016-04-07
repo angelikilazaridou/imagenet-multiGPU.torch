@@ -37,7 +37,7 @@ do -- start K datathreads (donkeys)
       function donkeys:synchronize() end
    end
 end
-
+print('Tralala!')
 nClasses = nil
 classes = nil
 donkeys:addjob(function() return trainLoader.classes end, function(c) classes = c end)

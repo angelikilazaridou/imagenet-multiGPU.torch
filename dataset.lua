@@ -42,6 +42,10 @@ local initcheck = argcheck{
     help="Percentage of split to go to Training"
    },
 
+   {name="neg_samples", 
+    type="number",
+    help="Number of negavive samples"},
+
    {name="samplingMode",
     type="string",
     help="Sampling mode: random | balanced ",
@@ -85,6 +89,7 @@ function dataset:__init(...)
 
    -- argcheck
    local args =  initcheck(...)
+   print('Tralalalalla')
    print(args)
    for k,v in pairs(args) do self[k] = v  print(k) end
 
@@ -375,13 +380,21 @@ end
 
 -- Semantic sampler, samples from the training set and adds also word vectors.
 function dataset:semanticsample(quantity)
-   assert(quantity)
    local dataTable = {}
    local embedTable = {}
    local scalarTable_1 = {}
    local scalarTable_2 = {}
 
-   for i=1,quantity do
+   local pos_samples = 0 
+   if self.neg_samples <= 0 then
+      pos_samples = quantity
+   else
+      pos_samples = quantity / (self.neg_samples+1)
+   end 
+   
+   assert(quantity % (self.neg_samples+1) == 0 ,' Give a batchSize so that  batchSize % (1 + neg_samples) is divisible!')
+
+   for i=1,pos_samples do
       local class = torch.random(1, #self.classes)
       local out = self:getByClass(class)
       table.insert(dataTable, out)
@@ -390,6 +403,24 @@ function dataset:semanticsample(quantity)
       local label = 1
       table.insert(scalarTable_1, label)
       table.insert(scalarTable_2, class)
+      
+      for n=1,self.neg_samples do
+      
+        --get random example 
+        local n_class = class
+        while n_class == class do
+          n_class = torch.random(1, #self.classes) 
+        end
+
+        -- add negative text samples
+        table.insert(dataTable, out)
+        local n_outEmb = self.w2v:getVector(n_class)
+	table.insert(embedTable, n_outEmb)
+        local label = -1
+        table.insert(scalarTable_1, label)
+        table.insert(scalarTable_2, n_class)
+       
+      end
    end
    local data, vectors, scalarLabels = tableToSemanticOutput(self, dataTable, embedTable, scalarTable_1, scalarTable_2)
    return data, vectors, scalarLabels

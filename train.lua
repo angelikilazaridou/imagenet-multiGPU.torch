@@ -27,12 +27,12 @@ if opt.crit == 'sem' then
       sampleSize = {3, opt.cropSize, opt.cropSize},  -- doesn't really matter
       split = 100,
       verbose = true,
-      wvectors = opt.wvectors
+      wvectors = opt.wvectors,
+      neg_samples = opt.neg_samples
    } 
   w2v = dummy:get_w2v()
-
-	
 end
+
 --[[
    1. Setup SGD optimization state and learning rate schedule
    2. Create loggers.
@@ -242,11 +242,11 @@ function trainBatch(inputsCPU, vectorsCPU, labelsCPU)
           end
           
       end
+      top1 = top1 * 100 / opt.batchSize;
    else 
-      top1, median, sim = w2v:eval_ranking(outputs[1]:float(), labelsCPU[2],1)
+      top1, median, sim = w2v:eval_ranking(outputs[1]:float(), labelsCPU[1], labelsCPU[2],1, opt.neg_samples)
    end
-   top1 = top1 * 100 / opt.batchSize;
-   -- Calculate top-1 error, and print information
+      -- Calculate top-1 error, and print information
    print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f Top1 %.4f  (Sim %.4f Med %.4f) LR %.0e DataLoadingTime %.3f'):format(
           epoch, batchNumber, opt.epochSize, timer:time().real, err, top1, median, sim,
           optimState.learningRate, dataLoadingTime))

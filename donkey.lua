@@ -14,11 +14,11 @@ paths.dofile('util.lua')
 -- It is run by each data-loader thread.
 ------------------------------------------
 
+
 -- a cache file of the training metadata (if doesnt exist, will be created)
 local trainCache = paths.concat(opt.cache, 'trainCache.t7')
 local testCache = paths.concat(opt.cache, 'testCache.t7')
 local meanstdCache = paths.concat(opt.cache, 'meanstdCache.t7')
-
 -- Check for existence of opt.data
 if not os.execute('cd ' .. opt.data) then
     error(("could not chdir to '%s'"):format(opt.data))
@@ -87,9 +87,9 @@ else
       sampleSize = sampleSize,
       split = 100,
       verbose = true,
-      wvectors = opt.wvectors
+      wvectors = opt.wvectors,
+      neg_samples = opt.neg_samples
    }
-   print(opt.wvectors)
    torch.save(trainCache, trainLoader)
    trainLoader.sampleHookTrain = trainHook
 end
@@ -146,7 +146,8 @@ else
       split = 0,
       verbose = true,
       forceClasses = trainLoader.classes, -- force consistent class indices between trainLoader and testLoader
-      wvectors = opt.wvectors
+      wvectors = opt.wvectors,
+      neg_samples = 0
    }
    torch.save(testCache, testLoader)
    testLoader.sampleHookTest = testHook

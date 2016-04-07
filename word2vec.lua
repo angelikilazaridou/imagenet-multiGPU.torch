@@ -73,7 +73,7 @@ function Word2vec:getVector(label)
 end
 
 
-function Word2vec:eval_ranking(predictions, labels, k)
+function Word2vec:eval_ranking(predictions, labels, classes, k, neg_samples)
 
   local els = predictions:size(1)
  
@@ -84,30 +84,36 @@ function Word2vec:eval_ranking(predictions, labels, k)
   -- cosine
   local cosine = predictions * self.w2v.M:transpose(1,2)
 
-  -- trace
-  local sim = cosine:float():trace() / els           
-
+  local sim = 0
   -- ranking
-  local ranking = torch.Tensor(els)
-  local topk=0
-  for s = 1,els do
-    _,index = torch.sort(cosine:select(1,s),true) -- sort rows
+  local ranking = torch.Tensor(els/(neg_samples+1))
+  local topk = 0
+  local tot = 0
 
-    local ind  = self.w2v.w2vvocab[self.classes[labels[s]]]
-    local not_found = true
-    local r = 1
-    while not_found do
-      if index[r]==ind then
-        ranking[s] = r
-        not_found = false
-        if r <= k then topk = topk+1 end
-      end
-      r = r + 1
-    end
+  for s = 1,els do
+    
+   if labels[s] == 1 then
+    	_,index = torch.sort(cosine:select(1,s),true) -- sort rows
+ 
+    	local ind  = self.w2v.w2vvocab[self.classes[classes[s]]]
+    	local not_found = true
+    	local r = 1
+    	while not_found do
+      		if index[r]==ind then
+        		ranking[tot+1] = r
+        		not_found = false
+        		if r <= k then topk = topk+1 end
+      		end
+      		r = r + 1
+    	end
+        tot = tot + 1 
+        sim = sim + cosine[s][s]
+        
+   end
   end
 
   median = torch.median(ranking)[1]
   
-  return topk, sim, median
+  return topk * 100 /tot , sim/tot, median
 end
 
