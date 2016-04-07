@@ -8,7 +8,31 @@
 --  of patent rights can be found in the PATENTS file in the same directory.
 --
 require 'optim'
+require 'dataset'
 
+
+
+local w2v
+--[[
+    NOTE!!!!
+    FIND A WAY TO NOT HAVE TO CREATE A DUMMY DATALOADER JUST TO 
+    BE ABLE TO GRAB THE W2V
+--]]
+
+
+if opt.crit == 'sem' then
+      dummy = dataLoader{
+      paths = {paths.concat(opt.data, 'val')}, --train
+      loadSize = {3, opt.imageSize, opt.imageSize}, --doesn't really matter
+      sampleSize = {3, opt.cropSize, opt.cropSize},  -- doesn't really matter
+      split = 100,
+      verbose = true,
+      wvectors = opt.wvectors
+   } 
+  w2v = dummy:get_w2v()
+
+	
+end
 --[[
    1. Setup SGD optimization state and learning rate schedule
    2. Create loggers.
@@ -99,7 +123,8 @@ function train()
          -- the job callback (runs in data-worker thread)
          function()
 	    local inputs, labels, vectors
-	    if opt.crit == 'class' then
+	    vectors = torch.rand(1)
+            if opt.crit == 'class' then
             	inputs, labels = trainLoader:sample(opt.batchSize)
 	    else
 		inputs, vectors, labels = trainLoader:semanticsample(opt.batchSize)
@@ -154,13 +179,14 @@ function trainBatch(inputsCPU, vectorsCPU, labelsCPU)
    local dataLoadingTime = dataTimer:time().real
    timer:reset()
 
-  
    -- transfer over to GPU
    inputs:resize(inputsCPU:size()):copy(inputsCPU)
    if opt.crit == 'sem' then
 	vectors:resize(vectorsCPU:size()):copy(vectorsCPU)
+        labels:resize(labelsCPU[1]:size()):copy(labelsCPU[1])
+   else
+   	labels:resize(labelsCPU:size()):copy(labelsCPU)
    end
-   labels:resize(labelsCPU:size()):copy(labelsCPU)
 
    local err, outputs
    feval = function(x)
@@ -202,21 +228,27 @@ function trainBatch(inputsCPU, vectorsCPU, labelsCPU)
    batchNumber = batchNumber + 1
    loss_epoch = loss_epoch + err
    -- top-1 error
-   ---- TODO evaluation
-   --[[local top1 = 0
-   do
-      local _,prediction_sorted = outputs:float():sort(2, true) -- descending
-      for i=1,opt.batchSize do
-	 if prediction_sorted[i][1] == labelsCPU[i] then
-	    top1_epoch = top1_epoch + 1;
-	    top1 = top1 + 1
-	 end
+   local top1 = 0
+   local median = 0
+   local sim = 0
+   if opt.crit == 'class' then
+      do
+          local _,prediction_sorted = outputs:float():sort(2, true) -- descending
+          for i=1,opt.batchSize do
+	      if prediction_sorted[i][1] == labelsCPU[i] then
+	          top1_epoch = top1_epoch + 1;
+	          top1 = top1 + 1
+	      end
+          end
+          
       end
-      top1 = top1 * 100 / opt.batchSize;
-   end--]]
+   else 
+      top1, median, sim = w2v:eval_ranking(outputs[1]:float(), labelsCPU[2],1)
+   end
+   top1 = top1 * 100 / opt.batchSize;
    -- Calculate top-1 error, and print information
-   print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f LR %.0e DataLoadingTime %.3f'):format(
-          epoch, batchNumber, opt.epochSize, timer:time().real, err, 
+   print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f Top1 %.4f  (Sim %.4f Med %.4f) LR %.0e DataLoadingTime %.3f'):format(
+          epoch, batchNumber, opt.epochSize, timer:time().real, err, top1, median, sim,
           optimState.learningRate, dataLoadingTime))
 
    dataTimer:reset()

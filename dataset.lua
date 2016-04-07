@@ -130,7 +130,7 @@ function dataset:__init(...)
 
    -- read in word vectors
    self.w2v = Word2vec(self.wvectors, self.classes)
-   
+ 
    -- define command-line tools, try your best to maintain OSX compatibility
    local wc = 'wc'
    local cut = 'cut'
@@ -296,6 +296,11 @@ function dataset:__init(...)
    end
 end
 
+
+function dataset:get_w2v()
+	return self.w2v
+end
+
 -- size(), size(class)
 function dataset:size(class, list)
    list = list or self.classList
@@ -331,21 +336,23 @@ local function tableToOutput(self, dataTable, scalarTable)
 end
 
 -- converts a table of samples (and corresponding labels) to a clean tensor
-local function tableToSemanticOutput(self, dataTable, embedTable, scalarTable)
+local function tableToSemanticOutput(self, dataTable, embedTable, scalarTable_1, scalarTable_2)
    local data, vectors, scalarLabels
-   local quantity = #scalarTable
+   local quantity = #scalarTable_1
    assert(dataTable[1]:dim() == 3)
    local v_dim = embedTable[1]:size(1)
    data = torch.Tensor(quantity,
                        self.sampleSize[1], self.sampleSize[2], self.sampleSize[3])
    vectors = torch.Tensor(quantity, v_dim)
-   scalarLabels = torch.LongTensor(quantity):fill(-1111)
+   scalarLabels_1 = torch.LongTensor(quantity):fill(0)
+   scalarLabels_2 = torch.LongTensor(quantity):fill(-1)
    for i=1,#dataTable do
       data[i]:copy(dataTable[i])
-      scalarLabels[i] = scalarTable[i]
+      scalarLabels_1[i] = scalarTable_1[i]
+      scalarLabels_2[i] = scalarTable_2[i]
       vectors[i]:copy(embedTable[i])
    end
-   return data, vectors, scalarLabels
+   return data, vectors, {scalarLabels_1, scalarLabels_2}
 end
 
 
@@ -371,7 +378,9 @@ function dataset:semanticsample(quantity)
    assert(quantity)
    local dataTable = {}
    local embedTable = {}
-   local scalarTable = {}
+   local scalarTable_1 = {}
+   local scalarTable_2 = {}
+
    for i=1,quantity do
       local class = torch.random(1, #self.classes)
       local out = self:getByClass(class)
@@ -379,9 +388,10 @@ function dataset:semanticsample(quantity)
       local outEmb = self.w2v:getVector(class)
       table.insert(embedTable, outEmb)
       local label = 1
-      table.insert(scalarTable, label)
+      table.insert(scalarTable_1, label)
+      table.insert(scalarTable_2, class)
    end
-   local data, vectors, scalarLabels = tableToSemanticOutput(self, dataTable, embedTable, scalarTable)
+   local data, vectors, scalarLabels = tableToSemanticOutput(self, dataTable, embedTable, scalarTable_1, scalarTable_2)
    return data, vectors, scalarLabels
 end
 

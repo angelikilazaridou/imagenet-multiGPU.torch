@@ -63,3 +63,5 @@ function loadDataParallel(filename, nGPU)
       error('The loaded model is not a Sequential or DataParallelTable module.')
    end
 end
+
+
