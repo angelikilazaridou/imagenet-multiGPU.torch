@@ -147,7 +147,6 @@ else
       verbose = true,
       forceClasses = trainLoader.classes, -- force consistent class indices between trainLoader and testLoader
       wvectors = opt.wvectors,
-      neg_samples = 0
    }
    torch.save(testCache, testLoader)
    testLoader.sampleHookTest = testHook

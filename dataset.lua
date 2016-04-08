@@ -42,9 +42,6 @@ local initcheck = argcheck{
     help="Percentage of split to go to Training"
    },
 
-   {name="neg_samples", 
-    type="number",
-    help="Number of negavive samples"},
 
    {name="samplingMode",
     type="string",
@@ -89,7 +86,6 @@ function dataset:__init(...)
 
    -- argcheck
    local args =  initcheck(...)
-   print('Tralalalalla')
    print(args)
    for k,v in pairs(args) do self[k] = v  print(k) end
 
@@ -379,20 +375,21 @@ end
 
 
 -- Semantic sampler, samples from the training set and adds also word vectors.
-function dataset:semanticsample(quantity)
+function dataset:semanticsample(quantity, neg_samples)
    local dataTable = {}
    local embedTable = {}
    local scalarTable_1 = {}
    local scalarTable_2 = {}
 
    local pos_samples = 0 
-   if self.neg_samples <= 0 then
+   if neg_samples <= 0 then
       pos_samples = quantity
    else
-      pos_samples = quantity / (self.neg_samples+1)
+      pos_samples = quantity / (neg_samples+1)
    end 
-   
-   assert(quantity % (self.neg_samples+1) == 0 ,' Give a batchSize so that  batchSize % (1 + neg_samples) is divisible!')
+ 
+   print(quantity % (neg_samples+1)) 
+   assert(quantity % (neg_samples+1) == 0 ,' Give a batchSize so that  batchSize % (1 + neg_samples) is divisible!')
 
    for i=1,pos_samples do
       local class = torch.random(1, #self.classes)
@@ -404,7 +401,7 @@ function dataset:semanticsample(quantity)
       table.insert(scalarTable_1, label)
       table.insert(scalarTable_2, class)
       
-      for n=1,self.neg_samples do
+      for n=1,neg_samples do
       
         --get random example 
         local n_class = class

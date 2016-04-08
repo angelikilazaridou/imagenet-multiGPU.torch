@@ -19,7 +19,6 @@ local w2v
     BE ABLE TO GRAB THE W2V
 --]]
 
-
 if opt.crit == 'sem' then
       dummy = dataLoader{
       paths = {paths.concat(opt.data, 'val')}, --train
@@ -28,11 +27,9 @@ if opt.crit == 'sem' then
       split = 100,
       verbose = true,
       wvectors = opt.wvectors,
-      neg_samples = opt.neg_samples
    } 
   w2v = dummy:get_w2v()
 end
-
 --[[
    1. Setup SGD optimization state and learning rate schedule
    2. Create loggers.
@@ -127,7 +124,7 @@ function train()
             if opt.crit == 'class' then
             	inputs, labels = trainLoader:sample(opt.batchSize)
 	    else
-		inputs, vectors, labels = trainLoader:semanticsample(opt.batchSize)
+		inputs, vectors, labels = trainLoader:semanticsample(opt.batchSize, opt.neg_samples)
 	    end 
 	    return inputs, vectors, labels
          end,
@@ -171,6 +168,7 @@ local timer = torch.Timer()
 local dataTimer = torch.Timer()
 
 local parameters, gradParameters = model:getParameters()
+parameters:uniform(-0.08, 0.08)
 
 -- 4. trainBatch - Used by train() to train a single batch after the data is loaded.
 function trainBatch(inputsCPU, vectorsCPU, labelsCPU)
@@ -244,7 +242,7 @@ function trainBatch(inputsCPU, vectorsCPU, labelsCPU)
       end
       top1 = top1 * 100 / opt.batchSize;
    else 
-      top1, median, sim = w2v:eval_ranking(outputs[1]:float(), labelsCPU[1], labelsCPU[2],1, opt.neg_samples)
+      top1, median, sim = w2v:eval_ranking(outputs[1]:float(), labelsCPU[1], labelsCPU[2],100, opt.neg_samples)
    end
       -- Calculate top-1 error, and print information
    print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f Top1 %.4f  (Sim %.4f Med %.4f) LR %.0e DataLoadingTime %.3f'):format(

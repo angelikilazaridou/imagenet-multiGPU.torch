@@ -48,13 +48,14 @@ function Word2vec:_bintot7(dir)
 	local rows = self:_read_json(dir .. '/rows.json')
         --Writing Files
         word2vec = {}
+        word2vec.M = torch.FloatTensor(M:size())
 	word2vec.w2vvocab = {}
 	word2vec.v2wvocab = {}
 	for i=1,words do
 		local w = rows[i]
 		word2vec.v2wvocab[i] = w
 		word2vec.w2vvocab[w] = i
-		--normalize to unit norm
+		--normalize to unit norm	
                 local n = M[i]:norm()
  		word2vec.M[i] = M[i]/n
 	end
@@ -70,6 +71,7 @@ end
 function Word2vec:getVector(label)
 	local ind  = self.w2v.w2vvocab[self.classes[label]]
 	return self.w2v.M[ind]
+       
 end
 
 
@@ -93,8 +95,8 @@ function Word2vec:eval_ranking(predictions, labels, classes, k, neg_samples)
   for s = 1,els do
     
    if labels[s] == 1 then
-    	_,index = torch.sort(cosine:select(1,s),true) -- sort rows
- 
+    	local _,index = torch.sort(cosine:select(1,s),true) -- sort rows
+
     	local ind  = self.w2v.w2vvocab[self.classes[classes[s]]]
     	local not_found = true
     	local r = 1
@@ -108,7 +110,7 @@ function Word2vec:eval_ranking(predictions, labels, classes, k, neg_samples)
     	end
         tot = tot + 1 
         sim = sim + cosine[s][s]
-        
+--        print(string.format('Gold: %s -- Predicted %s ',self.classes[classes[s]], self.w2v.v2wvocab[index[1]])) 
    end
   end
 
