@@ -101,7 +101,7 @@ print(model)
 -- read imageList
 local fh,err = io.open(opt.imageList)
 local n = opt.n_imgs
-ii =1
+ii = 1
 -- line by line
 all_images = torch.DoubleTensor(n, 3, imageSize, imageSize)
 while true do
