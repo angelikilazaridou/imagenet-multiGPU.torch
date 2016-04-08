@@ -388,7 +388,6 @@ function dataset:semanticsample(quantity, neg_samples)
       pos_samples = quantity / (neg_samples+1)
    end 
  
-   print(quantity % (neg_samples+1)) 
    assert(quantity % (neg_samples+1) == 0 ,' Give a batchSize so that  batchSize % (1 + neg_samples) is divisible!')
 
    for i=1,pos_samples do

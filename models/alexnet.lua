@@ -35,7 +35,9 @@ function createModel(nGPU)
    classifier:add(nn.Linear(4096, 4096))
    classifier:add(nn.Threshold(0, 1e-6))
    classifier:add(nn.Linear(4096, topLayer))
-   classifier:add(nn.LogSoftMax())
+   if opt.crit == 'class' then
+   	classifier:add(nn.LogSoftMax())
+   end
    classifier:cuda()
 
    -- 1.4. Combine 1.1 and 1.3 to produce final model

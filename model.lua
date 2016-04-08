@@ -37,8 +37,10 @@ end
 -- 2. Create Criterion based on word embeddings
 if opt.crit == 'sem' then
 	criterion = nn.CosineEmbeddingCriterion(opt.margin)
-else
+elseif opt.crit == 'class' then
 	criterion = nn.ClassNLLCriterion()
+else
+	criterion = nn.MSECriterion()
 end
 
 print('=> Model')

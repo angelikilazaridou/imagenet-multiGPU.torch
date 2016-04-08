@@ -19,7 +19,7 @@ local w2v
     BE ABLE TO GRAB THE W2V
 --]]
 
-if opt.crit == 'sem' then
+if opt.crit == 'sem' or 'mse' then
       dummy = dataLoader{
       paths = {paths.concat(opt.data, 'val')}, --train
       loadSize = {3, opt.imageSize, opt.imageSize}, --doesn't really matter
@@ -168,7 +168,6 @@ local timer = torch.Timer()
 local dataTimer = torch.Timer()
 
 local parameters, gradParameters = model:getParameters()
-parameters:uniform(-0.08, 0.08)
 
 -- 4. trainBatch - Used by train() to train a single batch after the data is loaded.
 function trainBatch(inputsCPU, vectorsCPU, labelsCPU)
@@ -179,11 +178,13 @@ function trainBatch(inputsCPU, vectorsCPU, labelsCPU)
 
    -- transfer over to GPU
    inputs:resize(inputsCPU:size()):copy(inputsCPU)
-   if opt.crit == 'sem' then
+   if opt.crit == 'sem'  then
 	vectors:resize(vectorsCPU:size()):copy(vectorsCPU)
         labels:resize(labelsCPU[1]:size()):copy(labelsCPU[1])
-   else
+   elseif opt.crit == 'class' then
    	labels:resize(labelsCPU:size()):copy(labelsCPU)
+   else
+	labels:resize(vectorsCPU:size()):copy(vectorsCPU)
    end
 
    local err, outputs
@@ -193,18 +194,17 @@ function trainBatch(inputsCPU, vectorsCPU, labelsCPU)
       local output = model:forward(inputs)
 
       --format input to criterion to be either {prediction} or {predictions, w_vectors}
-      if opt.crit == 'class' then
+      if opt.crit == 'class' or opt.crit == 'mse' then
         outputs = output
       else
-        outputs = {output, vectors}
+      	outputs = {output, vectors}
       end
-
       err = criterion:forward(outputs, labels)
 
       local grads = criterion:backward(outputs, labels)
 
       local gradOutputs 
-      if opt.crit == 'class' then 
+      if opt.crit == 'class' or opt.crit == 'mse' then 
 	gradOutputs = grads   
       else
 	gradOutputs = grads[1] -- cause we throw away the grads for the word embeddings
@@ -241,8 +241,10 @@ function trainBatch(inputsCPU, vectorsCPU, labelsCPU)
           
       end
       top1 = top1 * 100 / opt.batchSize;
-   else 
+   elseif opt.crit == 'sem' then 
       top1, median, sim = w2v:eval_ranking(outputs[1]:float(), labelsCPU[1], labelsCPU[2],100, opt.neg_samples)
+   else
+     top1, median, sim = w2v:eval_ranking(outputs:float(), labelsCPU[1], labelsCPU[2],100, opt.neg_samples)
    end
       -- Calculate top-1 error, and print information
    print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f Top1 %.4f  (Sim %.4f Med %.4f) LR %.0e DataLoadingTime %.3f'):format(

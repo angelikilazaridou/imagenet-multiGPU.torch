@@ -110,7 +110,7 @@ function Word2vec:eval_ranking(predictions, labels, classes, k, neg_samples)
     	end
         tot = tot + 1 
         sim = sim + cosine[s][s]
---        print(string.format('Gold: %s -- Predicted %s ',self.classes[classes[s]], self.w2v.v2wvocab[index[1]])) 
+        print(string.format('Gold: %s -- Predicted %s ',self.classes[classes[s]], self.w2v.v2wvocab[index[1]])) 
    end
   end
 

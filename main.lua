@@ -21,7 +21,7 @@ opt = opts.parse(arg)
 
 nClasses = opt.nClasses
 --THIS IS UGLY!!!
-if opt.crit == 'sem' then
+if opt.crit == 'sem' or opt.crit == 'mse' then
 	topLayer = opt.wvectors_dim
 else
 	topLayer = nClasses
